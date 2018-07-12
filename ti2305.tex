@@ -1,0 +1,118 @@
+\documentclass[]{article}
+
+\usepackage{amsmath} 
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+\begin{document}
+
+\title{TI2305 Summary}
+\author{Sander Ploegsma}
+\date{Last updated: \today}
+\maketitle
+
+% Well, ain't these useful.
+\newcommand{\abs}[1]{\lvert #1 \rvert}
+\newcommand{\uf}{\texttt{Union-Find} }
+\newtheorem{theorem}{Theorem}
+
+\tableofcontents
+
+\section{Greedy Algorithms}
+	Well-known applications of greedy algorithms are: \emph{shortest paths in a graph}, the \emph{Minimum Spanning Tree Problem}, and the construction of \emph{Huffman} codes for performing data compression. 
+	
+	\subsection{Interval Scheduling} \label{subsec:interval}
+		We have a set of requests $\{1,2,\dots,n\}$; the $i^{th}$ request corresponds to an interval of time starting at $s(i)$ and finishing at $f(i)$. We'll say that a subset of requests is \emph{compatible} if no two of them overlap in time, and our goal is to accept as large a compatible subset as possible. Compatible sets of maximum size will be called \emph{optimal}. \\
+		
+		\subsubsection{The solution}
+			The basic idea of a greedy algorithm is to use a simple rule to select a first request $i_1$. Once a request $i_1$ is accepted, we reject all requests that are not compatible with $i_1$. The challenge in designing a good greedy algorithm is in deciding which simple rule to use for the selection. This particular problem can be solved optimally by repeatedly selecting the request with the smallest finishing time $f(i)$. \\
+		
+			To show that the set $A$ returned by the algorithm is optimal, we need to show that $\abs{A} = \abs{O}$ where $O$ is an optimal set of intervals. To prove this, we note the set of requests in $A$ as $i_1,\dots,i_k$ and $j_1,\dots,j_m$ the set of requests in $O$. Our goal is to prove $k = m$. 
+			\begin{theorem} \label{th:interval} For all indices $r \le k$ we have $f(i_r) \le f(j_r)$ \end{theorem}
+			\begin{proof}[Proof by induction]
+				For $r = 1$ the theorem is clearly true: the algorithm starts by selecting the first request $i_1$ with minimum finish time. \\
+				Now let $r > 1$. We will assume as our induction hypothesis that the statement is true for $r - 1$. Since $O$ consists of compatible intervals, we know that $f(j_{r-1}) \le s(j_r)$. Combining with the induction hypothesis $f(i_{r-1}) \le f(j_{r-1})$ we get $f(i_{r-1}) \le s(j_r)$. Thus the interval $j_r$ is in the set $R$ of available intervals at the time when greedy selects $i_r$. Since the greedy algorithm selects the available interval with the \emph{smallest} finishing time; since interval $j_r$ is one of those available intervals, we obtain $f(i_r) \le f(j_r)$.
+			\end{proof}
+			\begin{theorem} The greedy algorithm returns an optimal set $A$ \end{theorem}
+			\begin{proof}[Proof by contradiction]
+				If $A$ is not optimal, then an optimal set $O$ must have more requests, therefore $m > k$. Applying Theorem \ref{th:interval} with $r = k$, we get that $f(i_k) \le f(j_k)$. Since $m > k$, there is a request $j_{k+1}$ in $O$. This request starts after $j_k$ ends, and hence after $i_k$ ends. So after deleting all requests that are not compatible with requests $i_1, \dots, i_k$, the set of possible requests $R$ still contains $j_{k+1}$. But the greedy algorithm stops with request $i_k$ and is only supposed to stop when $R$ is empty. So $A$ must be optimal. 
+			\end{proof}
+		\subsubsection{Implementation and running time}
+			The implementation for this algorithm is as follows: first sort the $n$ requests in order of finishing time. This takes $O(n \log n)$. In an additional $O(n)$ time, we construct an array $S\left[1 \dots n\right]$ with the property that $S[i]$ contains the value $s(i)$. \\
+			We now select requests by processing the intervals in order of increasing $f(i)$. If the most recently selected interval ends at $f$, we select the first interval where $s(j) \ge f$. In this way we implement the greedy algorithm in one pass through the intervals, spending constant time per interval. Thus, this part takes $O(n)$ time. 
+	\subsection{Interval partitioning}
+		The previous problem contains a set of requests that need scheduling over a single resource. A related problem arises if we have many identical resources available and we wish to schedule \emph{all} the requests using as few resources as possible. A good greedy algorithm would be to sort the requests by start time and assign them to a resource. Whenever a request overlaps with is predecessor, assign it to a new resource. The following theorem supports this idea.
+        \begin{theorem}In any instance of Interval Partitioning, the number of resources needed is at least the depth of the set of intervals.  \end{theorem}
+        \begin{proof}
+        	Suppose a set of intervals has depth $d$, and let $I_1,\dots,I_d$ all pass over a common point on the time-line. Then each of these intervals must be scheduled on a different resource, so the whole instance needs at least $d$ resources.
+        \end{proof}
+        This immediately implies the optimality of the solution provided above: no solution could use a number of resources that is smaller than the depth. 
+	\subsection{Scheduling to minimize lateness}
+    	Consider again a situation in which we have a single resource and a set of $n$ requests to use the resource for an interval of time. Assume that the resource is available at starting time $s$. Instead of start and finish times each request $i$ now has a deadline $d_i$ and requires a contiguous time interval of length $t_i$. Every request can be scheduled at any time before the deadline. \\
+		
+		Suppose that we plan to satisfy each request, but we are allowed to let certain requests run late. So beginning at our overall start time $s$, we will assign each request $i$ an interval of time of length $t_i$, which is noted as $\left[s(i),f(i)\right]$, with $f(i) = s(i) + t_i$. A request is \emph{late} if it misses the deadline, that is, if $f(i) > d_i$. The \emph{lateness} of such a request $i$ is defined to be $l_i = f(i) - d_i$. The goal will be to schedule all requests while minimizing the \emph{maximum lateness}, $L = \max_i l_i$.
+		
+		\subsubsection{The solution}
+			A basic greedy algorithm that always produces an optimal solution would be to schedule all requests in increasing order of their deadlines $d_i$. This is often called \emph{Earliest Deadline First}. \\
+			
+			To prove that this solution provides an optimal schedule $A$, we start by considering an optimal schedule $O$ and gradually transforming it into the schedule $A$, while preserving its optimality. We say that a schedule $A'$ has an \emph{inversion} if a job $i$ with deadline $d_i$ is scheduled before another job $j$ with earlier deadline $d_j < d_i$. By definition, our schedule $A$ has no inversions. If there are jobs with identical deadliness then there can be many different schedules with no inversions, although they have the same maximum lateness $L$. The main step in showing the optimality of our solution is to establish that there is an optimal schedule that has no inversions and no idle time.
+	\subsection{Shortest Paths in a Graph}
+		Greedy algorithms can also be used for graph traversal. We are given a directed graph $G = (V,E)$, with a designated start node $s$. Each edge $e$ has a length $l_e \ge 0$. For a path $P$, the \emph{length} $l_P$ is the sum of the lengths of all edges in $P$. The goal is to determine the shortest path from $s$ to every other node in the graph, assuming every other node is reachable from $s$. 
+		
+		\subsubsection{The solution}
+			An algorithm to determine the \emph{length} of the shortest path from $s$ to each other node in the graph maintains a set $S$ of vertices $u$ for which we have determined a shortest-path distance $d(u)$ from $s$; this is the ``explored'' part of the graph. Initially $S = \{s\}$ and $d(s) = 0$. Now, for each node $v \in V - S$, we determine the shortest path that can be constructed by traveling along a path through $S$ to some $u \in S$, followed by the single edge $(u,v)$. That is, we consider the quantity $d'(v) = \min_{e=(u,v):u\in S}d(u) + l_e$. We choose the node $v \in V - S$ for which $d'(v)$ is minimized, add $v$ to $S$, and define $d(v)$ to be the value $d'(v)$. This algorithm is also known as \emph{Dijkstra's Algorithm.}\\
+			
+			To produce the $s$-$u$ paths corresponding to the distances found by the algorithm, we simply record the edge $e$ used in determining $d'(v)$. The path $P_v$ is then easily found by combining the edges stored for $v$ in reverse chronological order. \\
+			
+			To prove that this algorithm always determines the shortest-path distance to $v$ we can show that it ``stays ahead'', just like in \ref{subsec:interval}.
+			\begin{theorem}Consider the set S at any point in the algorithm's execution. For each $u \in S$, the path $P_u$ is a shortest $s$-$u$ path.\end{theorem}
+			\begin{proof}[Proof by induction]
+				This can be proven by induction on the size of $S$. The case $\abs{S} = 1$ is easy, since then we have $S = \{s\}$ and $d(s) = 0$. Suppose the claim holds when $\abs{S} = k$ for some value of $k \ge 1$; we now grow $S$ to size $k+1$ by adding the node $v$. Let $(u,v)$ be the final edge on our $s$-$v$ path $P_v$. \\
+				
+				By induction hypothesis, $P_u$ is the shortest $s$-$u$ path for each $u \in S$. Now consider any other $s$-$v$ path $P$. In order to reach $v$, $P$ must leave the set $S$ \emph{somewhere}; let $y$ be the first node on $P$ that is not in $S$, and let $x \in S$ be the node just before $y$.\\
+				
+				$P$ cannot be shorter than $P_v$ because it is already at least as long as $P_v$ by the time it has left the set $S$. Since the algorithm always chooses the shortest edge it must have chosen $(u,v)$ over $(x,y)$. This means that there is no path from $s$ to $y$ that is shorter than $P_v$.
+			\end{proof}
+			
+			Using the \texttt{PriorityQueue} data structure, the overall time of this algorithm for a graph with $n$ nodes and $m$ edges is $O(m \log n)$.
+	\subsection{Minimum Spanning Tree}
+		Suppose we have a set of locations $V = \{v_1, v_2, \dots, v_n\}$ and we want to build a communication network on top of them. The network should be connected but we wish to build it as cheaply as possible. For certain pairs $(v_i,v_j)$ we may build a direct link at at certain cost $c(v_i,v_j) > 0$, which means we can represent the set of possible links that may be build using a graph with a positive cost $c_e$ associated with each edge $e = (v_i,v_j)$. The problem is to find a subset of the edges $T \subseteq E$ so that the graph $(V,T)$ is connected and the total cost equals $\min\sum_{e\in T}c_e$. 
+		\begin{theorem} \label{th:tree} Let $T$ be a minimum-cost solution to the network design problem defined above. Then $(V,T)$ is a tree.\end{theorem}
+		\begin{proof}
+			By definition, $(V,T)$ must be connected; we show that it will also contain no cycles. Indeed, suppose it contained a cycle $C$, and let $e$ be any edge on $C$. We claim that $(V,T-\{e\})$ is still connected, since any path that previously used the edge $e$ can now go ``the long way'' around the remainder of $C$ instead. It follows that $(V,T-\{e\})$ is also a valid solution to the problem, and it's cheaper, which is a contradiction.
+		\end{proof}
+		We will call a subset $T \subseteq E$ a \emph{spanning tree} of $G$ if $(V,T)$ is a tree. Theorem \ref{th:tree} says the goal of our problem can be rephrased as that of finding the cheapest spanning tree of the graph; which is why it is called the \emph{Minimum Spanning Tree Problem}. There are a couple of ways to solve this problem. Following algorithms are all valid solutions to this problem.
+		\begin{itemize}
+			\item One simple algorithm starts without any edges at all and builds a spanning tree by successively inserting edges from $E$ in order of increasing cost. We insert edge $e$ as long as it does not create a cycle, else it is discarded. This is called \emph{Kruskal's Algorithm}.
+			\item Another simple greedy algorithm can be designed by analogy with Dijkstra's Algorithm for paths. We maintain a set $S \subseteq V$ on which a spanning tree has been constructed so far. In each iteration, we grow $S$ by one node $v$ that minimizes the ``attachment cost'' $\min_{e=(u,v):u\in S}c_e$ and including the edge $e = (u,v)$ that achieves this minimum in the spanning tree. This approach is called \emph{Prim's Algorithm}.
+			\item Finally we can design a greedy algorithm by running sort of a ``backward'' version of Kruskal's Algorithm. We start with the full graph $G = (V,E)$ and begin deleting edges in order of decreasing cost as long as doing so will not disconnect $G$. This approach is known as the \emph{Reverse-Delete Algorithm}.
+		\end{itemize}
+		\begin{theorem}\label{th:cutproperty}Assume that all edge costs are distinct. Let $S$ be any subset of nodes that is neither empty nor equal to all of $V$, and let edge $e = (v,w)$ be the minimum-cost edge with one end in $S$ and the other in $V-S$. Then every minimum spanning tree contains the edge $e$.\end{theorem}
+		Theorem \ref{th:cutproperty} is also known as the \emph{Cut Property} and can be proven by using the exchange argument as follows.
+		\begin{proof}
+			Let $T$ be a spanning tree that does not contain $e$; we need to show that $T$ does not have the minimum possible cost. This means there exists an edge $e' \in T$ that is more expensive than $e$, thus exchanging these edges results in a tree cheaper than $T$. \\
+			Since $T$ is a spanning tree, there must exist a path $P$ from $v$ to $w$. There is a node $w'$ on $P$ that is in $V - S$. Let $v' \in S$ be the node just before $w'$ on $P$, and let $e' = (v',w')$ be the edge joining them. Thus, $e'$ is an edge of $T$ with one end in $S$ and the other in $V-S$. \\
+			If we exchange $e$ for $e'$, we get a set of edges $T' = T - \{e'\} \cup \{e\}$. Since all paths using $e'$ can now reroute through $e$, $(V,T')$ is connected. Also, since $e'$ is substituted by $e$, no cycles are present in $(V,T')$. Because of $e$ being the cheapest edge it shows that $c_e < c_{e'}$, thus the total cost of $T'$ is less than that of $T$.
+		\end{proof}
+		\begin{theorem}\label{th:cycleproperty}Assume that all edge costs are distinct. Let $C$ be any cycle in $G$, and let edge $e = (v,w)$ be the most expensive edge belonging to $C$. Then $e$ does not belong to any minimum spanning tree of $G$.\end{theorem}
+		Theorem \ref{th:cycleproperty} is also known as the \emph{Cycle Property}, and can be proven in a similar fashion as done for Theorem \ref{th:cutproperty}.
+		\begin{theorem}\label{th:kruskal}Kruskal's Algorithm produces a minimum spanning tree of $G$.\end{theorem}
+		\begin{proof}
+			Consider any edge $e = (v,w)$ added by Kruskal's Algorithm, and let $S$ be the set of all nodes to which $v$ has a path at the moment just before $e$ is added. Clearly, $v \in S$, but $w \notin S$, since adding $e$ does not create a cycle. Thus, $e$ is the cheapest edge with one end in $S$ and the other in $V-S$ and so by Theorem \ref{th:cutproperty} it belongs to every minimum spanning tree. This holds for all edges added by the algorithm, making the output $(V,T)$ an MST.
+		\end{proof}
+		Prim's Algorithm can be proven in a similar fashion using Theorem \ref{th:cutproperty}. The Reverse-Delete Algorithm can be proven in a similar fashion using Theorem \ref{th:cycleproperty}.
+	\subsection{Implementing Kruskal's Algorithm: The Union-Find Data Structure}
+		Since Kruskal's Algorithm is constantly adding edges to the graph, recomputing the connected components from scratch every time is a bad idea. The \texttt{Union-Find} data structure solves this problem. As each edge $e = (v,w)$ is considered, we need to efficiently find the identities of the connected components containing $v$ and $w$. If these components are different $e$ needs to be included, else it should be omitted. The data structure supports the finding of the component containing a node $u$, as well as merging two components $A$ and $B$ into a single set. \\
+		
+		The \texttt{Union-Find} data structure will support the following three operations.
+		\begin{itemize}
+			\item \texttt{MakeUnionFind}($S$) for a set $S$ will return a \uf data structure on set $S$ where all elements are in separate sets. This should take $O(n)$ time, where $n = \abs{S}$.
+			\item For an element $u \in S$, the operation \texttt{Find}($u$) will return the name of the set containing $u$. This should take $O(\log n)$ time, although there are optimizations possible that reduce this to $O(1)$.
+			\item For two sets $A$ and $B$, the operation \texttt{Union}($A$,$B$) will change the data structure by merging the sets $A$ and $B$ into a single set. This should take $O(\log n)$ time.
+		\end{itemize}
+
+\end{document}
